@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lock'd - VisionGate</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection"></script>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Lock'd</h1>
+        <div class="main-content">
+            <!-- Video Container -->
+            <div id="video-wrapper" class="locked">
+                <div id="player"></div>
+                <!-- Puzzle Overlay -->
+                <div id="puzzle-overlay">
+                    <h2 id="puzzle-prompt">Hold up 3 fingers!</h2>
+                    <p>Unlock to watch the video</p>
+                </div>
+            </div>
+
+            <!-- Camera Placeholder -->
+            <div id="camera-placeholder">
+                <video id="webcam-video" playsinline style="display: none;"></video>
+                <canvas id="output-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="js/gameLogic.js"></script>
+    <script src="js/youtubeCtrl.js"></script>
+    <script src="js/vision.js"></script>
+</body>
+</html>

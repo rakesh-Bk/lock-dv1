@@ -1,0 +1,14 @@
+{
+  "name": "lock'd",
+  "version": "1.0.0",
+  "description": "Lock'd (formerly VisionGate) is a web application that regulates children's screen time by functioning as a solve-to-unlock gate. Children must complete physical, interactive puzzles on-camera to access parent-approved YouTube content.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
