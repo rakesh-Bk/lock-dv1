@@ -101,3 +101,150 @@ ALTERATIONS
         ├── vision.js            # [NEW] Contains TF.js setup, tracking loop, and gesture math
         └── mockVision.js        # [DELETE] We no longer need the cheat buttons
 
+
+STEP 3 - Shape match games
+# Lock'd - Feature: Shape Match Minigame (Plugin Architecture)
+
+## Overview
+Lock'd is a solve-to-unlock web application using computer vision to regulate children's screen time. This feature specification defines the **Shape Match Minigame**, an interactive module where children use a camera-tracked "pinch" gesture to pick up geometric shapes, drag them across the live canvas feed, and drop them into corresponding target outlines to unlock YouTube playback.
+
+This module builds on the existing TensorFlow.js MediaPipe tracking infrastructure in `vision.js` and follows a standalone plugin contract.
+
+---
+
+## Objectives
+1. **Pinch-to-Grab Mechanics:** Compute the Euclidean distance between hand landmarks (Thumb Tip `4` and Index Tip `8`) to simulate mouse-down/mouse-up events.
+2. **Interactive Drag-and-Drop:** Translate the pinch midpoint into active cursor coordinates to manipulate virtual shapes on the mirrored canvas.
+3. **Collision Detection & Snapping:** Detect when a grabbed shape is within tolerance of its target outline, snap it into place, and mark it matched.
+4. **Lifecycle Integration:** Expose standard `start(onSuccessCallback)`, `stop()`, `evaluate(keypoints)`, and `draw(ctx)` methods to keep `shapeMatch.js` decoupled from `vision.js` and `gameLogic.js`.
+
+---
+
+## Technical Specifications
+
+### 1. Coordinate Space & Dimensions
+* **Canvas Resolution:** Fixed at $320 \times 240$ pixels (matching the webcam stream).
+* **Coordinate Inversion Warning:** Because `vision.js` flips the canvas horizontally (`ctx.scale(-1, 1)` and `ctx.translate(-canvas.width, 0)`), ensure landmark calculations match the rendered canvas coordinate space.
+
+### 2. Gesture Formulas
+* **Cursor Position:**
+  $$\text{cursorX} = \frac{\text{keypoint}[4].x + \text{keypoint}[8].x}{2}$$
+  $$\text{cursorY} = \frac{\text{keypoint}[4].y + \text{keypoint}[8].y}{2}$$
+* **Pinch Distance:**
+  $$\text{pinchDistance} = \sqrt{(\text{keypoint}[8].x - \text{keypoint}[4].x)^2 + (\text{keypoint}[8].y - \text{keypoint}[4].y)^2}$$
+  * `isPinching = pinchDistance < 25` (threshold in pixels).
+
+### 3. Hitbox & Tolerances
+* **Pick-up Radius:** Cursor within $30\text{px}$ of shape center.
+* **Drop / Snap Radius:** Shape center within $30\text{px}$ of target center.
+
+---
+
+## Architecture & File Structure
+
+```text
+/
+├── app.js                 
+└── /public                
+    ├── index.html         # Uses ES module loading for script separation
+    ├── css/
+    │   └── style.css      
+    └── js/
+        ├── gameLogic.js         # Core state management
+        ├── youtubeCtrl.js       # YouTube IFrame API control
+        ├── vision.js            # Webcam pipeline & MediaPipe detector loop
+        └── shapeMatch.js        # [NEW] Standalone Shape Match plugin module
+
+        The module must export ShapeMatchGame implementing this interface:
+
+JavaScript
+export const ShapeMatchGame = {
+  isActive: false,
+  onSuccess: null,
+  draggedShape: null,
+  shapes: [
+    { id: 'square', x: 40, y: 50, targetX: 250, targetY: 50, color: '#3B82F6', isMatched: false },
+    { id: 'circle', x: 40, y: 120, targetX: 250, targetY: 120, color: '#EF4444', isMatched: false },
+    { id: 'triangle', x: 40, y: 190, targetX: 250, targetY: 190, color: '#10B981', isMatched: false }
+  ],
+  start(onSuccessCallback) {}, // Initializes state and sets success callback
+  stop() {},                   // Cleans up state and resets positions
+  evaluate(keypoints) {},      // Calculates pinch and updates dragging/snapping
+  draw(ctx) {}                 // Renders shapes and outlines on the canvas context
+};
+
+STEP 4 - Target shooter
+# Lock'd - Feature: Sequential Puzzle Pipeline
+
+## Overview
+Lock'd is a solve-to-unlock web application using computer vision to regulate children's screen time. This feature specification defines a **Sequential Puzzle Pipeline**. 
+
+Instead of a single game unlocking the video, the user must now complete two games in a row:
+1. **Stage 1: Shape Match Minigame** (Pinch gesture to drag and drop 3 shapes).
+2. **Stage 2: Target Shooter Minigame** (Gun pose to aim and shoot 10 targets).
+3. **Stage 3: Unlock** (YouTube video becomes accessible).
+
+This requires implementing both plugin modules and updating the main application logic to handle the state transition between games.
+
+---
+
+## Objectives
+1. **Implement `shapeMatch.js`:** A drag-and-drop shape matching game using pinch detection (distance between thumb and index finger).
+2. **Implement `targetShooter.js`:** A laser-pointer game using a "gun pose" (index extended, others closed) with a particle explosion effect.
+3. **Implement the Chain Logic:** Update the core flow so that the `onSuccessCallback` of the first game initiates the `start()` method of the second game, rather than immediately unlocking the video.
+
+---
+
+## Architecture & File Structure
+
+```text
+/
+├── app.js                 
+└── /public                
+    ├── index.html         # Must load both game modules
+    ├── css/
+    │   └── style.css      
+    └── js/
+        ├── gameLogic.js         # Manages the transition between games and the final unlock
+        ├── youtubeCtrl.js       
+        ├── vision.js            # Feeds tracking data to whichever game is currently active
+        ├── shapeMatch.js        # Stage 1 Plugin
+        └── targetShooter.js     # Stage 2 Plugin
+
+        To chain the games, the active game state must be managed dynamically. In vision.js (or gameLogic.js), agents must implement a transition sequence.
+
+Expected Logic Flow:
+
+JavaScript
+import { ShapeMatchGame } from './shapeMatch.js';
+import { TargetShooterGame } from './targetShooter.js';
+
+let activeGame = null;
+
+// Start the sequence
+export function startPuzzleSequence() {
+    activeGame = ShapeMatchGame;
+    // When Shape Match finishes, start Target Shooter
+    activeGame.start(() => {
+        startStageTwo();
+    });
+}
+
+function startStageTwo() {
+    activeGame = TargetShooterGame;
+    // When Target Shooter finishes, unlock the video
+    activeGame.start(() => {
+        activeGame = null;
+        window.unlockVideo(); // Or evaluateAnswer(true) depending on the codebase
+    });
+}
+
+// In the TensorFlow tracking loop:
+function evaluateFrame(keypoints) {
+    if (activeGame) activeGame.evaluate(keypoints);
+}
+
+// In the Canvas rendering loop:
+function drawFrame(ctx) {
+    if (activeGame) activeGame.draw(ctx);
+}

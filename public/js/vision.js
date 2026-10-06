@@ -1,3 +1,41 @@
+import { ShapeMatchGame } from './shapeMatch.js';
+import { TargetShooterGame } from './targetShooter.js';
+
+let activeGame = null;
+let puzzlePrompt = null;
+
+export function startPuzzleSequence() {
+    puzzlePrompt = document.getElementById('puzzle-prompt');
+    if (puzzlePrompt) puzzlePrompt.innerText = "Drag shapes to their outlines!";
+    
+    if (activeGame) activeGame.stop();
+    activeGame = ShapeMatchGame;
+    
+    activeGame.start(() => {
+        startStageTwo();
+    });
+}
+
+function startStageTwo() {
+    if (puzzlePrompt) puzzlePrompt.innerText = "Make a gun pose and hit 10 targets!";
+    
+    if (activeGame) activeGame.stop();
+    activeGame = TargetShooterGame;
+    
+    activeGame.start(() => {
+        if (activeGame) activeGame.stop();
+        activeGame = null;
+        if (puzzlePrompt) puzzlePrompt.innerText = "Unlocked!";
+        
+        if (window.gameState) {
+            window.gameState.providedAnswer = window.gameState.expectedAnswer;
+            if (typeof window.evaluateAnswer === "function") {
+                window.evaluateAnswer();
+            }
+        }
+    });
+}
+
 let detector;
 let video;
 let canvas;
@@ -39,9 +77,19 @@ async function initVision() {
     console.log("📷 Camera ready:", video.videoWidth + "x" + video.videoHeight);
 
     canvas = document.getElementById('output-canvas');
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
+    
+    const logicalWidth = 320;
+    const logicalHeight = 240;
+    const dpr = window.devicePixelRatio || 1;
+    
+    canvas.width = logicalWidth * dpr;
+    canvas.height = logicalHeight * dpr;
+    // Removed inline styles to let CSS width/height: 100% take over for full screen
+    
     ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     // Start drawing the camera feed immediately
     renderVideo();
@@ -57,20 +105,27 @@ detector = await handPoseDetection.createDetector(model, {
 console.log("✅ Detector ready (mediapipe runtime)");
 
     setStatus("Show your hand");
+    
+    startPuzzleSequence();
+    
     trackHands();
 }
 
 function renderVideo() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, 320, 240);
 
     // Mirror the feed; keypoints are drawn inside the same transform so they line up
     ctx.save();
     ctx.scale(-1, 1);
-    ctx.translate(-canvas.width, 0);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.translate(-320, 0);
+    ctx.drawImage(video, 0, 0, 320, 240);
 
     if (latestKeypoints) {
         drawKeypoints(latestKeypoints);
+    }
+
+    if (activeGame) {
+        activeGame.draw(ctx);
     }
 
     ctx.restore();
@@ -88,37 +143,15 @@ async function trackHands() {
 
             if (hands.length > 0) {
                 latestKeypoints = hands[0].keypoints;
-                console.log("wrist:", latestKeypoints[0], "index tip:", latestKeypoints[8]);
+                
+                if (activeGame) {
+                    activeGame.evaluate(latestKeypoints);
+                }
+                
                 const numFingers = countFingers(latestKeypoints);
-                setStatus("Fingers: " + numFingers);
-
-                if (numFingers === lastCount) {
-                    stableCount++;
-                } else {
-                    lastCount = numFingers;
-                    stableCount = 1;
-                }
-
-                console.log(
-                    "Fingers:", numFingers,
-                    "| stable:", stableCount + "/" + REQUIRED_STABLE_FRAMES,
-                    "| confidence:", hands[0].score?.toFixed(2),
-                    "| hand:", hands[0].handedness
-                );
-                debugFingers(latestKeypoints);
-
-                // Only report the answer once it's been steady for a few frames
-                if (stableCount >= REQUIRED_STABLE_FRAMES) {
-                    window.gameState.providedAnswer = numFingers;
-                    if (typeof window.evaluateAnswer === "function") {
-                        window.evaluateAnswer();
-                    }
-                }
+                setStatus("Pinch distance: " + Math.hypot(latestKeypoints[8].x - latestKeypoints[4].x, latestKeypoints[8].y - latestKeypoints[4].y).toFixed(1));
             } else {
                 latestKeypoints = null;
-                stableCount = 0;
-                lastCount = -1;
-                window.gameState.providedAnswer = 0;
                 setStatus("Show your hand");
             }
         }
@@ -131,10 +164,10 @@ async function trackHands() {
 }
 
 function drawKeypoints(keypoints) {
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "black";
     for (const kp of keypoints) {
         ctx.beginPath();
-        ctx.arc(kp.x, kp.y, 4, 0, 2 * Math.PI);
+        ctx.arc(kp.x, kp.y, 1.5, 0, 2 * Math.PI);
         ctx.fill();
     }
 }
