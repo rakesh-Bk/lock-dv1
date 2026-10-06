@@ -5,29 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lock'd - VisionGate</title>
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- TensorFlow.js + hand pose detection -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection"></script>
 </head>
 <body>
     <div class="app-container">
         <h1>Lock'd</h1>
         <div class="main-content">
-            <!-- Video Container -->
+
+            <!-- Video container -->
             <div id="video-wrapper" class="locked">
                 <div id="player"></div>
-                <!-- Puzzle Overlay -->
+
+                <!-- Puzzle overlay -->
                 <div id="puzzle-overlay">
                     <h2 id="puzzle-prompt">Hold up 3 fingers!</h2>
                     <p>Unlock to watch the video</p>
                 </div>
             </div>
 
-            <!-- Camera Placeholder -->
-            <div id="camera-placeholder">
-                <video id="webcam-video" playsinline style="display: none;"></video>
+            <!-- Camera -->
+            <div id="camera-container">
+                <!-- Hidden webcam element (styled from vision.js) -->
+                <video id="webcam-video" playsinline muted></video>
+                <!-- Visible mirrored feed with red keypoints -->
                 <canvas id="output-canvas"></canvas>
+                <!-- Live debug readout -->
+                <p id="finger-count" style="margin:6px 0 0;font-family:sans-serif;">Loading camera…</p>
             </div>
         </div>
     </div>

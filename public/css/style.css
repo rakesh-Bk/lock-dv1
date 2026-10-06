@@ -35,13 +35,15 @@ h1 {
 }
 
 #video-wrapper {
-    position: relative;
-    width: 640px;
-    height: 360px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     background-color: #000;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 10;
     transition: opacity 0.4s ease;
 }
 
@@ -75,7 +77,7 @@ h1 {
     display: none;
 }
 
-#camera-placeholder {
+#camera-container {
     position: fixed;
     top: 0;
     left: 0;
@@ -89,9 +91,28 @@ h1 {
 }
 
 #output-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    z-index: -2;
+}
+
+#finger-count {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.6);
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 5;
 }
 
 #cheat-menu {
